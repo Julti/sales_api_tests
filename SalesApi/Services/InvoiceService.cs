@@ -18,7 +18,8 @@ namespace SalesApi.Services
         public async Task<int> createInvoice(InvoiceDto invoice)
         {
             int invoiceId = await _repository.CreateSalesHeader(invoice);
-            return await _repository.CreateSalesDetails(invoice.details,invoiceId); 
+            await _repository.CreateSalesDetails(invoice.details,invoiceId);
+            return invoiceId;
         }
 
         public async Task<List<SalesDetailDto>> getInvoiceDetails(int invoiceId)

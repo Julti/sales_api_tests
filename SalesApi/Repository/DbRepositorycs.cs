@@ -14,14 +14,14 @@ namespace SalesApi.Repository
 {
     public class DbRepositorycs
     {
-        private static readonly string connectionString = @"";
+        private static readonly string connectionString = @"Data Source=localhost;Initial Catalog=ProductSales;User Id= 'LAPTOP-SM8CFMSR\Juan'; Password='';Trusted_Connection=True;MultipleActiveResultSets=True;Integrated Security=true;";
 
         public DbRepositorycs()
         {
-            
+
         }
 
-        
+
         public async Task<List<Product>> Get()
         {
             var settings = new JsonSerializerSettings
@@ -33,9 +33,10 @@ namespace SalesApi.Repository
             SqlConnection connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
             string query = "SELECT Id,Name,UnitPrice FROM Product ";
-            
+
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
+                await command.PrepareAsync();
                 using (SqlDataReader dataReader = await command.ExecuteReaderAsync())
                 {
                     while (dataReader.Read())
@@ -64,6 +65,7 @@ namespace SalesApi.Repository
 
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
+                await command.PrepareAsync();
                 using (SqlDataReader dataReader = await command.ExecuteReaderAsync())
                 {
                     while (dataReader.Read())
@@ -94,13 +96,14 @@ namespace SalesApi.Repository
 
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
+                await command.PrepareAsync();
                 using (SqlDataReader dataReader = await command.ExecuteReaderAsync())
                 {
                     while (dataReader.Read())
                     {
                         InvoiceDto item = new InvoiceDto();
                         item.id = Int32.Parse(dataReader[0].ToString());
-                        item.customerName = dataReader[1].ToString()+" "+ dataReader[2].ToString();
+                        item.customerName = dataReader[1].ToString() + " " + dataReader[2].ToString();
                         itemList.Add(item);
                     }
                 }
@@ -118,11 +121,12 @@ namespace SalesApi.Repository
             SqlConnection connection = new SqlConnection(connectionString);
             await connection.OpenAsync();
             string query = "SELECT P.Name,SD.Quantity,SD.UnitPrice,SD.TotalPrice FROM SalesDetails SD INNER JOIN SalesHeader SH ON SD.SalesHeaderId=SH.Id INNER JOIN Product P ON SD.ProductId=P.Id "
-                           +"WHERE SH.Id=@Id";
+                           + "WHERE SH.Id=@Id";
 
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
                 command.Parameters.AddWithValue("Id", invoiceId);
+                await command.PrepareAsync();
                 using (SqlDataReader dataReader = await command.ExecuteReaderAsync())
                 {
                     while (dataReader.Read())
@@ -146,9 +150,9 @@ namespace SalesApi.Repository
                 MissingMemberHandling = MissingMemberHandling.Ignore
             };
             SqlConnection connection = new SqlConnection(connectionString);
-           
+
             await connection.OpenAsync();
-            string query = "INSERT  INTO Product (Name,UnitPrice) OUTPUT Inserted.Id VALUES(@Name,@UnitPrice) ";
+            string query = "INSERT  INTO Product (Name,UnitPrice) OUTPUT Inserted.Id VALUES(@Name,@UnitPrice) RETURNING id;";
             int id = 0;
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
@@ -158,7 +162,7 @@ namespace SalesApi.Repository
                 {
                     while (dataReader.Read())
                     {
-                        id = int.Parse(dataReader[0].ToString());
+                        id = dataReader.GetInt32(0);
                     }
                 }
             }
@@ -174,7 +178,7 @@ namespace SalesApi.Repository
             SqlConnection connection = new SqlConnection(connectionString);
 
             await connection.OpenAsync();
-            string query = "INSERT  INTO Customer (Name,LastName,Identification,Phone) OUTPUT Inserted.Id VALUES(@Name,@LastName,@Identification,@Phone) ";
+            string query = "INSERT  INTO Customer (Name,LastName,Identification,Phone) OUTPUT Inserted.Id VALUES(@Name,@LastName,@Identification,@Phone) RETURNING id;";
             int id = 0;
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
@@ -186,7 +190,7 @@ namespace SalesApi.Repository
                 {
                     while (dataReader.Read())
                     {
-                        id = int.Parse(dataReader[0].ToString());
+                        id = dataReader.GetInt32(0);
                     }
                 }
             }
@@ -194,16 +198,11 @@ namespace SalesApi.Repository
         }
         public async Task<int> CreateSalesHeader(InvoiceDto invoice)
         {
-            var settings = new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Ignore,
-                MissingMemberHandling = MissingMemberHandling.Ignore
-            };
             SqlConnection connection = new SqlConnection(connectionString);
 
             await connection.OpenAsync();
 
-            string query = "INSERT INTO SalesHeader (CustomerId) OUTPUT Inserted.Id   VALUES (@CustomerId) ";
+            string query = "INSERT INTO SalesHeader (CustomerId) OUTPUT Inserted.Id   VALUES (@CustomerId) RETURNING id;";
             int id = 0;
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
@@ -212,80 +211,57 @@ namespace SalesApi.Repository
                 {
                     while (dataReader.Read())
                     {
-                        id = int.Parse(dataReader[0].ToString());
+                        id = dataReader.GetInt32(0);
                     }
                 }
             }
             return id;
         }
-        public async Task<int> CreateSalesDetails(List<SalesDetail> details,int invoiceId)
+        public async Task<List<int>> CreateSalesDetails(List<SalesDetail> details, int invoiceId)
         {
-            var settings = new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Ignore,
-                MissingMemberHandling = MissingMemberHandling.Ignore
-            };
             SqlConnection connection = new SqlConnection(connectionString);
-            int id = 0;
+            List<int> ids = new List<int>();
             await connection.OpenAsync();
-            try
-            {
-                for (int i = 0; i < details.Count(); i++)
-                {
-                    string query = "INSERT INTO SalesDetails (ProductId,Quantity,UnitPrice,TotalPrice,SalesHeaderId) OUTPUT Inserted.Id" +
-                                   " VALUES (@ProductId,@Quantity,@UnitPrice,@TotalPrice,@SalesHeaderId) ";
 
-                    using (SqlCommand command = new SqlCommand(query.ToString(), connection))
+            for (int i = 0; i < details.Count(); i++)
+            {
+                string query = "INSERT INTO SalesDetails (ProductId,Quantity,UnitPrice,TotalPrice,SalesHeaderId) OUTPUT Inserted.Id" +
+                               " VALUES (@ProductId,@Quantity,@UnitPrice,@TotalPrice,@SalesHeaderId) RETURNING id;";
+
+                using (SqlCommand command = new SqlCommand(query.ToString(), connection))
+                {
+                    command.Parameters.AddWithValue("ProductId", details.ElementAt(i).ProductId);
+                    command.Parameters.AddWithValue("Quantity", details.ElementAt(i).Quantity);
+                    command.Parameters.AddWithValue("UnitPrice", details.ElementAt(i).UnitPrice);
+                    command.Parameters.AddWithValue("TotalPrice", details.ElementAt(i).TotalPrice);
+                    command.Parameters.AddWithValue("SalesHeaderId", invoiceId);
+                    using (SqlDataReader dataReader = await command.ExecuteReaderAsync())
                     {
-                        command.Parameters.AddWithValue("ProductId", details.ElementAt(i).ProductId);
-                        command.Parameters.AddWithValue("Quantity", details.ElementAt(i).Quantity);
-                        command.Parameters.AddWithValue("UnitPrice", details.ElementAt(i).UnitPrice);
-                        command.Parameters.AddWithValue("TotalPrice", details.ElementAt(i).TotalPrice);
-                        command.Parameters.AddWithValue("SalesHeaderId", invoiceId);
-                        using (SqlDataReader dataReader = await command.ExecuteReaderAsync())
+                        while (dataReader.Read())
                         {
-                            while (dataReader.Read())
-                            {
-                                id = int.Parse(dataReader[0].ToString());
-                            }
+                            ids.Add(dataReader.GetInt32(0));
                         }
                     }
                 }
             }
-            catch (Exception e)
-            {
 
-            }
-
-
-            return id;
+            return ids;
         }
         public async Task<int> UpdateProduct(Product product)
         {
-            var settings = new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Ignore,
-                MissingMemberHandling = MissingMemberHandling.Ignore
-            };
             SqlConnection connection = new SqlConnection(connectionString);
-
             await connection.OpenAsync();
             string query = "Update Product SET Name=@Name,UnitPrice=@UnitPrice WHERE Id=@Id";
-            int id = 0;
+            int ModifiedRows = 0;
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
                 command.Parameters.AddWithValue("Name", product.Name);
                 command.Parameters.AddWithValue("UnitPrice", product.UnitPrice);
                 command.Parameters.AddWithValue("Id", product.Id);
-                using (SqlDataReader dataReader = await command.ExecuteReaderAsync())
-                {
-                    while (dataReader.Read())
-                    {
-                        id = int.Parse(dataReader[0].ToString());
-                    }
-                }
+                ModifiedRows = await command.ExecuteNonQueryAsync();
             }
-            return id;
+            await connection.CloseAsync();
+            return ModifiedRows;
         }
         public async Task<int> UpdateCustomer(Customer customer)
         {
@@ -298,7 +274,7 @@ namespace SalesApi.Repository
 
             await connection.OpenAsync();
             string query = "Update Customer SET Name=@Name,LastName=@LastName,Identification=@Identification,Phone=@Phone WHERE Id=@Id";
-            int id = 0;
+            int ModifiedRows = 0;
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
                 command.Parameters.AddWithValue("Id", customer.Id);
@@ -306,66 +282,39 @@ namespace SalesApi.Repository
                 command.Parameters.AddWithValue("LastName", customer.LastName);
                 command.Parameters.AddWithValue("Identification", customer.Identification);
                 command.Parameters.AddWithValue("Phone", customer.Phone);
-                using (SqlDataReader dataReader = await command.ExecuteReaderAsync())
-                {
-                    while (dataReader.Read())
-                    {
-                        id = int.Parse(dataReader[0].ToString());
-                    }
-                }
+                ModifiedRows = await command.ExecuteNonQueryAsync();
             }
-            return id;
+            await connection.CloseAsync();
+            return ModifiedRows;
         }
         public async Task<int> DeleteProduct(int idProduct)
         {
-            var settings = new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Ignore,
-                MissingMemberHandling = MissingMemberHandling.Ignore
-            };
             SqlConnection connection = new SqlConnection(connectionString);
 
             await connection.OpenAsync();
             string query = "Delete Product WHERE Id=@Id;                    ";
-            int id = 0;
+            int ModifiedRows = 0;
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
                 command.Parameters.AddWithValue("Id", idProduct);
-                using (SqlDataReader dataReader = await command.ExecuteReaderAsync())
-                {
-                    while (dataReader.Read())
-                    {
-                        id = int.Parse(dataReader[0].ToString());
-                    }
-                }
+                ModifiedRows= await command.ExecuteNonQueryAsync();
             }
-            return id;
+            await connection.CloseAsync();
+            return ModifiedRows;
         }
         public async Task<int> DeleteCustomer(int idCustomer)
         {
-            var settings = new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Ignore,
-                MissingMemberHandling = MissingMemberHandling.Ignore
-            };
             SqlConnection connection = new SqlConnection(connectionString);
-
             await connection.OpenAsync();
             string query = "Delete Customer WHERE Id=@Id;                    ";
-            int id = 0;
+            int ModifiedRows = 0;
             using (SqlCommand command = new SqlCommand(query.ToString(), connection))
             {
                 command.Parameters.AddWithValue("Id", idCustomer);
-                using (SqlDataReader dataReader = await command.ExecuteReaderAsync())
-                {
-                    while (dataReader.Read())
-                    {
-                        id = int.Parse(dataReader[0].ToString());
-                    }
-                }
+                ModifiedRows= await command.ExecuteNonQueryAsync();
             }
-            return id;
+            await connection.CloseAsync();
+            return ModifiedRows;
         }
-
     }
 }

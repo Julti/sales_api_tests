@@ -133,4 +133,3 @@ C:\Users\Juan\source\repos\SalesApi\SalesApi\obj\Debug\netcoreapp3.1\staticwebas
 C:\Users\Juan\source\repos\SalesApi\SalesApi\obj\Debug\netcoreapp3.1\SalesApi.dll
 C:\Users\Juan\source\repos\SalesApi\SalesApi\obj\Debug\netcoreapp3.1\SalesApi.pdb
 C:\Users\Juan\source\repos\SalesApi\SalesApi\obj\Debug\netcoreapp3.1\SalesApi.genruntimeconfig.cache
-C:\Users\Juan\source\repos\SalesApi\SalesApi\obj\Debug\netcoreapp3.1\SalesApi.csprojAssemblyReference.cache
