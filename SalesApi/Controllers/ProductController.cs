@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SalesApi.Models;
 using SalesApi.Services;
+using SalesApi.Util;
 
 namespace SalesApi.Controllers
 {
@@ -18,24 +19,56 @@ namespace SalesApi.Controllers
             _productService = productService;
         }
         [HttpGet]
-        public async Task<List<Product>> List()
+        public async Task<IActionResult> List()
         {
-            return await _productService.ListProducts();
+            try
+            {
+                var response = await _productService.ListProducts();
+                return Ok(response);
+            }
+            catch (Exception e)
+            {
+                return BadRequest(ResponseUtils.BuildUnsuccessfullResponse(e));
+            }
         }
         [HttpPost]
-        public async Task<int> CreateProduct([FromBody]Product product)
+        public async Task<IActionResult> CreateProduct([FromBody]Product product)
         {
-            return await _productService.CreateProduct(product);
+            try
+            {
+                var response = await _productService.CreateProduct(product);
+                return Ok(ResponseUtils.BuildSuccessfullResponse(response));
+            }
+            catch (Exception e)
+            {
+                return BadRequest(ResponseUtils.BuildUnsuccessfullResponse(e));
+            }
         }
         [HttpPut]
-        public async Task<int> UpdateProduct([FromBody]Product product)
+        public async Task<IActionResult> UpdateProduct([FromBody]Product product)
         {
-            return await _productService.UpdateProduct(product);
+            try
+            {
+                var response = await _productService.UpdateProduct(product);
+                return Ok(ResponseUtils.BuildSuccessfullResponse(response));
+            }
+            catch (Exception e)
+            {
+                return BadRequest(ResponseUtils.BuildUnsuccessfullResponse(e));
+            }
         }
         [HttpDelete]
-        public async Task<int> DeleteProduct([FromQuery]int productId)
+        public async Task<IActionResult> DeleteProduct([FromQuery]int productId)
         {
-            return await _productService.DeleteProduct(productId);
+            try
+            {
+                var response = await _productService.DeleteProduct(productId);
+                return Ok(ResponseUtils.BuildSuccessfullResponse(response));
+            }
+            catch (Exception e)
+            {
+                return BadRequest(ResponseUtils.BuildUnsuccessfullResponse(e));
+            }
         }
 
 
